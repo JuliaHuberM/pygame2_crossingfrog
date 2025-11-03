@@ -7,6 +7,23 @@ from classes.hud import HUD
 pygame.init()
 SCREENWIDTH, SCREENHEIGHT = 900, 935
 FPS = 60
+pygame.mixer.init()  # Inicializa o mixer de áudio
+
+# Carregar música de fundo
+try:
+    pygame.mixer.music.load('sons/trilha.mp3')
+    pygame.mixer.music.play(-1)
+except pygame.error as e:
+    print(f"Erro ao carregar música de fundo: {e}")
+
+# Carregar efeitos sonoros
+try:
+    som_movimento = pygame.mixer.Sound('sons/raposa.mp3')
+    som_start = pygame.mixer.Sound('sons/start.mp3')
+    som_troca_fase = pygame.mixer.Sound('sons/fases.mp3')
+    som_game_over = pygame.mixer.Sound('sons/game_over.mp3')
+except pygame.error as e:
+    print(f"Erro ao carregar sons: {e}")
 
 # --- Estado do jogo ---
 STATE = "menu"  # menu → jogo → end
@@ -34,6 +51,7 @@ while True:
         if STATE == "menu":
             menu_start.handle_event(event)
             if gsm.get_state() == "level":
+                som_start.play()
                 STATE = "jogo"
         
         # Tela final
@@ -43,6 +61,7 @@ while True:
                 jogo = CruzamentoFazenda()
                 hud = HUD(jogo.janela, jogo)
                 STATE = "menu"
+                pygame.mixer.music.play(-1)  # Reinicie a trilha ao voltar ao menu
 
         # Jogo da raposa
         elif STATE == "jogo":
@@ -69,6 +88,8 @@ while True:
 
         # Vai pra tela final quando acabar as vidas
         if jogo.vidas <= 0 or jogo.game_over:
+            pygame.mixer.music.stop()
+            som_game_over.play()
             STATE = "end"
 
     elif STATE == "end":
