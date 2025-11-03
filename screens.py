@@ -2,10 +2,11 @@ import pygame
 import sys
 import os
 
+# --- CONFIGURAÇÕES GERAIS ---
 SCREENWIDTH, SCREENHEIGHT = 900, 935
 FPS = 60
 
-# --- FUNÇÃO AUXILIAR PARA CORRIGIR CAMINHOS ---
+# --- FUNÇÃO AUXILIAR PARA CAMINHOS ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 def get_asset_path(relative_path):
     return os.path.join(BASE_DIR, relative_path)
@@ -16,6 +17,7 @@ class BaseScreen:
         self.display = display
         self.gsm = gsm
 
+        # carrega o fundo
         full_bg_path = get_asset_path(bg_path)
         self.bg = pygame.image.load(full_bg_path).convert()
         self.bg = pygame.transform.scale(self.bg, (SCREENWIDTH, SCREENHEIGHT))
@@ -36,14 +38,34 @@ class Start(BaseScreen):
         button_image_path = get_asset_path("imagens_pygame/botao_start.png")
 
         self.start_button_image = pygame.image.load(button_image_path).convert_alpha()
+
+        # redimensiona o botão
         target_width = 400
         original_width, original_height = self.start_button_image.get_size()
-        new_height = int(original_height * (target_width / original_width))
-
+        new_height = int(original_height * (target_width / original_width))/2
         self.start_button_image = pygame.transform.scale(self.start_button_image, (target_width, new_height))
+
+        # cria efeito hover
         self.start_button_hover_image = self.start_button_image.copy()
         self.start_button_hover_image.fill((50, 50, 50, 0), special_flags=pygame.BLEND_RGB_SUB)
         self.start_button_rect = None
+
+        # Carrega as 4 imagens do nome do jogo para animação
+        TAMANHO_NOME = (600, 100)
+        try:
+            self.game_name_images = [
+                pygame.transform.scale(pygame.image.load(get_asset_path(f"imagens_pygame/nome_jogo_{i}.png")).convert_alpha(), TAMANHO_NOME)
+                for i in range(1, 5)
+            ]
+        except pygame.error as e:
+            print(f"Erro ao carregar imagens do nome do jogo: {e}")
+            # Fallback: se não carregar, usa uma superfície vazia ou texto simples
+            fallback_surface = self.font_title.render("Running Fox Game", True, (255, 255, 255))
+            self.game_name_images = [fallback_surface] * 4  # Repete a mesma imagem 4 vezes
+
+
+        # Contador para animação
+        self.animation_frame = 0
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
@@ -55,7 +77,18 @@ class Start(BaseScreen):
 
     def run(self):
         self.display.blit(self.bg, (0, 0))
-        button_y_pos = SCREENHEIGHT // 2
+        
+        # Animação do nome do jogo
+        if self.game_name_images:
+            current_image = self.game_name_images[self.animation_frame % len(self.game_name_images)]
+            img_rect = current_image.get_rect(center=(SCREENWIDTH // 2, SCREENHEIGHT // 3))  # Posição acima do botão
+            self.display.blit(current_image, img_rect)
+        
+        # Incrementa o contador de animação (ajuste para velocidade: % 16 para mais lento)
+        self.animation_frame += 1
+
+        # Desenha o botão
+        button_y_pos = SCREENHEIGHT * 5 // 6
         mouse_pos = pygame.mouse.get_pos()
         current_button_image = self.start_button_image
         self.start_button_rect = current_button_image.get_rect(center=(SCREENWIDTH // 2, button_y_pos))
@@ -115,10 +148,12 @@ class GameStateManager:
 class Game:
     def __init__(self):
         pygame.init()
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))  # garante o diretório correto
         self.screen = pygame.display.set_mode((SCREENWIDTH, SCREENHEIGHT))
         pygame.display.set_caption("Running Fox Game")
         self.clock = pygame.time.Clock()
 
+        # inicializa estados
         self.gameStateManager = GameStateManager('start')
         self.start = Start(self.screen, self.gameStateManager)
         self.level = Level(self.screen, self.gameStateManager)
